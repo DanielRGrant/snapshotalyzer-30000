@@ -8,12 +8,30 @@ def FilterInstances(project):
 	else:
 		return ec2.instances.all()
 
-session= boto3.Session(profile_name='Shotty')
+## Initialise session
+session= boto3.Session(profile_name='shotty')
+#get resources
 ec2 = session.resource('ec2')
 
+
+
 @click.group()
+def cli():
+	'''Shotty manages snapshots'''
+
+@cli.group()
 def instances():
 	'''Commands for instances'''
+
+@cli.group()
+def volumes():
+	'''Commands for volumes'''
+
+@cli.group()
+def snapshots():
+	'''Commands for snapshots'''
+
+
 
 
 ## list instances
@@ -36,7 +54,7 @@ def ListInstances(project):
 			i.public_dns_name,
 			str(tags)
 			)))
-
+	return
 
 ## stop instances
 @instances.command('stop')
@@ -71,5 +89,53 @@ def StartInstances(project):
 
 
 
+
+
+## list volumes
+@volumes.command('list')
+@click.option('--project', default=None,
+	help="Only instances for project (tag project:<name>)")
+def ListVolumes(project):
+	'''List ec2 instances'''
+	instances= []
+	instances = FilterInstances(project)
+
+	for i in instances:
+		for v in i.volumes.all():
+			print(", ".join((
+			i.id,
+			v.id,
+			v.state,
+			str(v.size)+ "GiB"
+			)))
+	return
+
+
+
+## list snapshots
+@snapshots.command('list')
+@click.option('--project', default=None,
+	help="Only instances for project (tag project:<name>)")
+def ListSnapshots(project):
+	'''List ec2 instances'''
+
+	instances = []
+	instances = FilterInstances(project)
+
+	for i in instances:
+		for v in i.volumes.all():
+			for s in v.snapshots.all():
+				print(", ".join((
+					i.id,
+					v.id,
+					s.id,
+					s.start_time.strftime("%c"),
+					str(s.volume_size)+"GiB",
+					s.state,
+					s.progress
+					)))
+	return
+
+
 if __name__ == "__main__":
-	instances()
+	cli()
