@@ -6,10 +6,9 @@ from datetime import datetime, timedelta, timezone
 
 
 
-
-@click.option('--profile', default=None, type = str
+@click.option('--profile', default=None, type = str,
 	help="Set which user profile to run commands from")
-@click.option('--region', default=None, type = str
+@click.option('--region', default=None, type = str,
 	help="Set which user region to run commands from")
 @click.group()
 def cli(profile, region):
@@ -35,11 +34,18 @@ def cli(profile, region):
 
 
 def FilterInstances(project):
+	'''Filter instances by "project" tag, if tag provided otherwise return all instances available to profile'''
 	if project:
 		filters = [{'Name':'tag:project', 'Values':[project]}] #not clear in boto3 docs. may need to google
-		return ec2.instances.filter(Filters=filters)
+		instances = ec2.instances.filter(Filters=filters)
+		if not list(instances):
+			print("No instances found with this project tag")
+		return 
 	else:
-		return ec2.instances.all()
+		instances = ec2.instances.all()
+		if not list(instances):
+			print("No instances found")
+		return instances
 
 def HasPendingSnapshots(volume):
 	snapshots = list(volume.snapshots.all())
@@ -69,7 +75,9 @@ def snapshots():
 def ListInstances(project):
 	'''List ec2 instances'''
 	instances= []
-	instances = FilterInstances(project)
+	instances = FilterInstances(project) #filter users instances by project parameter
+
+
 
 	for i in instances:
 		tags = { t['Key'] : t['Value'] for t in i.tags or [] }
@@ -89,7 +97,7 @@ def ListInstances(project):
 @click.option('--project', default=None, type = str,
 	help="Only instances for project (tag project:<name>)")
 @click.option('--force', 'force_all_instances', default=False, is_flag=True,
-	help="DANGER! This flag applies the tag to ever accessible to user.")
+	help="DANGER! This flag applies the tag to every accessible to user.")
 @click.option('--instance_ids', default=[], multiple=True, type = str,
 	help='''Specify instances, by instance id, to snapshot. For multiple instances 
 	use the option multiple times.''')
@@ -101,7 +109,10 @@ def StopInstances(project, instance_ids, force_all_instances):
 		print("Error: Missing --project parameter. To apply command to all instances accessible to user, use --force flag")
 		return
 	instances= []
-	instances = FilterInstances(project)
+	instances = FilterInstances(project) #filter users instances by project parameter
+
+	if not list(instances):
+		print("No instances found with this project tag")
 
 	for i in instances:
 
@@ -136,7 +147,7 @@ def StartInstances(project, instance_ids, force_all_instances):
 		print("Error: Missing --project parameter. To apply command to all instances accessible to user, use --force flag")
 		return
 	instances= []
-	instances = FilterInstances(project)
+	instances = FilterInstances(project) #filter users instances by project parameter
 
 	for i in instances:
 		#if user provides instance ids, skip if current id not provided
@@ -170,7 +181,10 @@ def RebootInstances(project, instance_ids, force_all_instances):
 		print("Error: Missing --project parameter. To apply command to all instances accessible to user, use --force flag")
 		return
 	instances= []
-	instances = FilterInstances(project)
+	instances = FilterInstances(project) #filter users instances by project parameter
+
+	if not list(instances):
+		print("No instances found with this project tag")
 
 	for i in instances:
 
@@ -212,6 +226,8 @@ def CreateSnapshots(project, instance_ids, force_all_instances, age):
 	instances= []
 	instances = FilterInstances(project) #filter users instances by project parameter
 
+	if not list(instances):
+		print("No instances found with this project tag")
 
 	for i in instances:
 
@@ -234,7 +250,7 @@ def CreateSnapshots(project, instance_ids, force_all_instances, age):
 			for s in v.snapshots.all():
 				if s.start_time > datetime.now(timezone.utc)-timedelta(days= int(age) ):
 					last_snapshot_too_recent = True
-					print("No snapshot created for instance volume {0} of instance {1}. Last snapshot created {2}".format(v.id, i.id, s.start_time.strftime("%c")))
+					print("No snapshot created for volume {0} of instance {1}. Last snapshot created {2}".format(v.id, i.id, s.start_time.strftime("%c")))
 
 					break
 			if last_snapshot_too_recent:
@@ -266,7 +282,8 @@ def CreateSnapshots(project, instance_ids, force_all_instances, age):
 def ListVolumes(project):
 	'''List ec2 instances'''
 	instances= []
-	instances = FilterInstances(project)
+	instances = FilterInstances(project) #filter users instances by project parameter
+
 
 	for i in instances:
 		for v in i.volumes.all():
@@ -282,7 +299,7 @@ def ListVolumes(project):
 
 ## list snapshots
 @snapshots.command('list')
-@click.option('--project', default=None, type = str
+@click.option('--project', default=None, type = str,
 	help="Only instances for project (tag project:<name>)")
 @click.option('--all', 'list_all', default=False, is_flag=True,
 	help="List all snapshots for each volume, not just most recent")
@@ -290,7 +307,7 @@ def ListSnapshots(project, list_all):
 	'''List ec2 instances'''
 
 	instances = []
-	instances = FilterInstances(project)
+	instances = FilterInstances(project) #filter users instances by project parameter
 
 	for i in instances:
 		for v in i.volumes.all():
