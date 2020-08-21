@@ -4,7 +4,8 @@ import click
 from datetime import datetime, timedelta, timezone
 
 
-
+'''Module allows listing, starting, stopping, rebooting, snapshotting of instances;
+listing of volumes and listing of snapshots'''
 
 @click.option('--profile', default=None, type = str,
 	help="Set which user profile to run commands from")
@@ -26,7 +27,7 @@ def cli(profile, region):
 			ec2 = session.resource('ec2')
 
 	except botocore.exceptions.ProfileNotFound as e:
-		raise
+		raise 
 	except botocore.exceptions.EndpointConnectionError as e:
 		raise Exception("Error: CHECK REGION TAG. {0}".format(str(e)))
 
@@ -40,7 +41,7 @@ def FilterInstances(project):
 		instances = ec2.instances.filter(Filters=filters)
 		if not list(instances):
 			print("No instances found with this project tag")
-		return 
+		return instances
 	else:
 		instances = ec2.instances.all()
 		if not list(instances):
@@ -212,7 +213,7 @@ def RebootInstances(project, instance_ids, force_all_instances):
 	help='''Specify instances, by instance id, to snapshot. For multiple instances 
 	use the option multiple times.''')
 @click.option('--force', 'force_all_instances', default=False, is_flag=True,
-	help="DANGER! This flag applies the tag to ever accessible to user.")
+	help="DANGER! This flag applies the tag to every accessible to user.")
 @click.option('--age', default=None, type = int,
 	help="Snapshot if last snapshot of volume is older than <int> days")
 def CreateSnapshots(project, instance_ids, force_all_instances, age):
@@ -226,8 +227,8 @@ def CreateSnapshots(project, instance_ids, force_all_instances, age):
 	instances= []
 	instances = FilterInstances(project) #filter users instances by project parameter
 
-	if not list(instances):
-		print("No instances found with this project tag")
+	if not instances:
+		raise ValueError("No instances found with this project tag")
 
 	for i in instances:
 
@@ -274,6 +275,65 @@ def CreateSnapshots(project, instance_ids, force_all_instances, age):
 			i.start()
 
 	print("Snapshotting completed!")
+
+
+
+## Create images of instances
+@instances.command('create_image')
+@click.option('--project', default=None, type= str,
+	help="Only instances for project (tag project:<name>)")
+@click.option('--instance_ids', default=[], multiple=True, type = str,
+	help='''Specify instances, by instance id, to snapshot. For multiple instances 
+	use the option multiple times.''')
+@click.option('--force', 'force_all_instances', default=False, is_flag=True,
+	help="DANGER! This flag applies the tag to every accessible to user.")
+def CreateImages(project, instance_ids, force_all_instances):
+	'''Create AMIs of instances using AWS default values'''
+
+
+	if not project and not force_all_instances:
+		print('''Error: Missing --project parameter. To apply command to all instances 
+			accessible to user, use --force flag.''')
+		return
+
+
+	instances= []
+	instances = FilterInstances(project) #filter users instances by project parameter
+
+	if not instances:
+		raise ValueError("No instances found with this project tag")
+
+	for i in instances:
+		
+		#if user provides instance ids, skip if current id not provided
+		if instance_ids and i.id not in instance_ids:
+			continue
+
+
+
+		#Check if instance stopped (will only reboot running instances)
+		NoReboot=False
+		if i.state["Name"]=="stopped":
+			NoReboot=True
+
+		#EDIT: check pending anything?
+		if not NoReboot:
+			print("Instance Stopping: "+i.id)
+
+		print("Creating image, instance: " +i.id)
+		try:
+			#Create string from id and current time
+			name = i.id + "_" + datetime.now(timezone.utc).strftime("%Y-%m-%d-T%H-%M")
+
+			i.create_image(Name=name, NoReboot=NoReboot)
+			print("Image created:", name)
+		except:
+			print("Image could not be created")
+		if not NoReboot:
+			print("Instance Starting: " + i.id)
+			i.wait_until_running()
+			print("Instance Started: " + i.id)
+
 
 ## list volumes
 @volumes.command('list')
@@ -329,3 +389,11 @@ def ListSnapshots(project, list_all):
 
 if __name__ == "__main__":
 	cli()
+
+
+
+
+
+	
+
+
