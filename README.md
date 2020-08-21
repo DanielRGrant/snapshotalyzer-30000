@@ -61,4 +61,3 @@ for snapshots:
 
 to do:
 -exception handling for option inputs
--add functionality to stop, start etc
