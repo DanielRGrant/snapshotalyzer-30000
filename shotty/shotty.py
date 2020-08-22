@@ -2,6 +2,7 @@ import boto3
 import botocore
 import click
 from datetime import datetime, timedelta, timezone
+import sys
 
 
 '''Module allows listing, starting, stopping, rebooting, snapshotting of instances;
@@ -15,11 +16,15 @@ listing of volumes and listing of snapshots'''
 def cli(profile, region):
 	'''Shotty manages snapshots'''
 	global ec2
+
+	if not profile:
+		sys.tracebacklimit= 0
+		raise Exception("Must specify AWS config profile")
+
+
 	try:
 		if profile:
 			session= boto3.Session(profile_name=profile)
-		else:
-			session= boto3.Session(profile_name='shotty')
 		if region:
 			ec2 = session.resource(service_name='ec2', region_name=region)
 			list(ec2.instances.all())
@@ -27,9 +32,11 @@ def cli(profile, region):
 			ec2 = session.resource('ec2')
 
 	except botocore.exceptions.ProfileNotFound as e:
-		raise 
+		sys.tracebacklimit= 0
+		raise e
 	except botocore.exceptions.EndpointConnectionError as e:
 		raise Exception("Error: CHECK REGION TAG. {0}".format(str(e)))
+
 
 	return
 
