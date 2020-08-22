@@ -11,9 +11,12 @@ Ensure you have an AWS CLI profile configured
 Command format:
 `shotty <options1><group><command><options2>`
 
-Example:
+Examples:
+
 `shotty --profile=ExampleProfile instances create_image --project=ExampleProject`
+
 `shotty --profile=ExampleProfile volumes --project=ExampleProject`
+
 `shotty --profile=ExampleProfile instances stop --force`
 
 
