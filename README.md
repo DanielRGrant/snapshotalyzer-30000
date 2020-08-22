@@ -60,11 +60,13 @@ create_image (create images of all instances)
 
 
 for volumes:
+
 list
 	*options2*
 	--project (instances must have tag project:<name>)
 
 for snapshots:
+
 list
 	*options2*
 	--project (instances must have tag project:<name>)
