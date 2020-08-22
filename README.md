@@ -21,13 +21,17 @@ Examples:
 
 
 
-*options1*
---profile (specify config profile)
---region (override config region)
+	*options1*
+	--profile (specify config profile)
+	--region (override config region)
 
 *group*
 
-instances, volumes, snapshots 
+	instances
+	
+	volumes
+	
+	snapshots 
 
 *command*
 
